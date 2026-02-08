@@ -1,19 +1,30 @@
 {
   "name": "siwa",
   "version": "0.1.0",
-  "private": true,
   "description": "Sign In With Agent - Wallet-based auth for AI agents",
   "workspaces": [
     "packages/*",
     "examples/*"
   ],
+  "keywords": [
+    "openclaw",
+    "skill",
+    "authentication",
+    "solana",
+    "agent",
+    "ai",
+    "wallet"
+  ],
   "author": "The Shellborn Collective",
-  "homepage": "https://shellborn.io",
+  "homepage": "https://siwa-landing-black.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/borninshell/siwa"
+  },
   "scripts": {
     "build": "npm run build --workspaces",
     "test": "cd packages/core && npx jest"
   },
-  "author": "ChattyClaw",
   "license": "Apache-2.0",
   "devDependencies": {
     "@types/jest": "^30.0.0",

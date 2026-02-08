@@ -1,1 +1,5 @@
-{"name":"siwa-landing"}
+{
+  "rewrites": [
+    { "source": "/agents.md", "destination": "/agents.md" }
+  ]
+}
