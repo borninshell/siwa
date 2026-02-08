@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIWA — Sign In With Agent | Wallet Auth for AI Agents</title>
+  
+  <!-- SEO Meta -->
+  <meta name="description" content="SIWA is the authentication standard for autonomous AI agents. Like Sign In With Google, but for machines. Ed25519 signatures, Solana-native, zero browsers required.">
+  <meta name="keywords" content="SIWA, Sign In With Agent, AI authentication, agent auth, Solana, Ed25519, wallet authentication, autonomous agents, agentic commerce, AI agents, machine identity, Shellborn">
+  <meta name="author" content="The Shellborn Collective">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://getsiwa.com">
+  
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://getsiwa.com">
+  <meta property="og:title" content="SIWA — Sign In With Agent">
+  <meta property="og:description" content="The authentication standard for autonomous AI agents. Like Sign In With Google, but for machines. Ed25519 signatures, Solana-native, zero browsers.">
+  <meta property="og:image" content="https://getsiwa.com/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="SIWA">
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@shellaborninshell">
+  <meta name="twitter:title" content="SIWA — Sign In With Agent">
+  <meta name="twitter:description" content="The authentication standard for autonomous AI agents. Like Sign In With Google, but for machines. Solana-native. Zero browsers.">
+  <meta name="twitter:image" content="https://getsiwa.com/og-image.png">
+  
+  <style>
+    :root {
+      --bg: #0a0e17;
+      --bg-card: #111827;
+      --bg-code: #0d1117;
+      --border: #1e293b;
+      --text: #e2e8f0;
+      --text-dim: #94a3b8;
+      --text-muted: #64748b;
+      --cyan: #22d3ee;
+      --green: #4ade80;
+      --purple: #a78bfa;
+      --orange: #fb923c;
+      --red: #f87171;
+      --blue: #60a5fa;
+      --yellow: #fbbf24;
+      --cyan-glow: rgba(34, 211, 238, 0.15);
+      --font-mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Nav */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(10, 14, 23, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-logo {
+      font-family: var(--font-mono);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--cyan);
+      text-decoration: none;
+    }
+
+    .nav-links { display: flex; gap: 1.5rem; align-items: center; }
+
+    .nav-links a {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 0.875rem;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--cyan); }
+
+    .btn-github {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn-github:hover {
+      border-color: var(--cyan);
+      background: var(--cyan-glow);
+    }
+
+    /* Shellborn Banner */
+    .shellborn-banner {
+      background: linear-gradient(90deg, rgba(34, 211, 238, 0.1) 0%, rgba(167, 139, 250, 0.1) 100%);
+      border-bottom: 1px solid rgba(34, 211, 238, 0.2);
+      padding: 0.5rem 2rem;
+      text-align: center;
+      font-size: 0.85rem;
+      margin-top: 53px;
+    }
+
+    .shellborn-banner a {
+      color: var(--cyan);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .shellborn-banner a:hover {
+      text-decoration: underline;
+    }
+
+    /* Hero */
+    .hero {
+      min-height: calc(100vh - 53px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem 2rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, rgba(34, 211, 238, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.375rem 1rem;
+      background: var(--cyan-glow);
+      border: 1px solid rgba(34, 211, 238, 0.3);
+      border-radius: 100px;
+      font-size: 0.8rem;
+      color: var(--cyan);
+      font-weight: 500;
+      margin-bottom: 2rem;
+      font-family: var(--font-mono);
+    }
+
+    .hero h1 {
+      font-size: clamp(2.5rem, 7vw, 5rem);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 1.5rem;
+      background: linear-gradient(135deg, #fff 0%, var(--cyan) 50%, var(--purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 1.25rem;
+      color: var(--text-dim);
+      max-width: 600px;
+      margin-bottom: 3rem;
+    }
+
+    /* Terminal animation */
+    .terminal {
+      width: 100%;
+      max-width: 700px;
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      text-align: left;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+    }
+
+    .terminal-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .terminal-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .terminal-dot.red { background: #ff5f57; }
+    .terminal-dot.yellow { background: #febc2e; }
+    .terminal-dot.green { background: #28c840; }
+
+    .terminal-title {
+      flex: 1;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .terminal-body {
+      padding: 1.25rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      line-height: 1.7;
+      min-height: 280px;
+    }
+
+    .term-line { margin-bottom: 0.25rem; opacity: 0; animation: fadeIn 0.3s forwards; }
+    .term-prompt { color: var(--green); }
+    .term-comment { color: var(--text-muted); }
+    .term-string { color: var(--yellow); }
+    .term-key { color: var(--cyan); }
+    .term-value { color: var(--purple); }
+    .term-success { color: var(--green); }
+    .term-dim { color: var(--text-muted); }
+    .term-arrow { color: var(--orange); }
+
+    @keyframes fadeIn { to { opacity: 1; } }
+
+    .term-line:nth-child(1) { animation-delay: 0.5s; }
+    .term-line:nth-child(2) { animation-delay: 1.0s; }
+    .term-line:nth-child(3) { animation-delay: 1.5s; }
+    .term-line:nth-child(4) { animation-delay: 2.0s; }
+    .term-line:nth-child(5) { animation-delay: 2.2s; }
+    .term-line:nth-child(6) { animation-delay: 2.4s; }
+    .term-line:nth-child(7) { animation-delay: 3.0s; }
+    .term-line:nth-child(8) { animation-delay: 3.5s; }
+    .term-line:nth-child(9) { animation-delay: 4.0s; }
+    .term-line:nth-child(10) { animation-delay: 4.3s; }
+    .term-line:nth-child(11) { animation-delay: 4.6s; }
+    .term-line:nth-child(12) { animation-delay: 5.2s; }
+    .term-line:nth-child(13) { animation-delay: 5.5s; }
+
+    /* Sections */
+    section {
+      padding: 5rem 2rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-bottom: 0.75rem;
+    }
+
+    section h2 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+
+    section .subtitle {
+      color: var(--text-dim);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin-bottom: 3rem;
+    }
+
+    /* How it works */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .step {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      position: relative;
+      transition: border-color 0.3s;
+    }
+
+    .step:hover { border-color: var(--cyan); }
+
+    .step-number {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--cyan);
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      background: var(--cyan-glow);
+      border-radius: 4px;
+    }
+
+    .step h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .step p { color: var(--text-dim); font-size: 0.9rem; }
+
+    .step code {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--green);
+      background: rgba(74, 222, 128, 0.1);
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+    }
+
+    /* Comparison table */
+    .comparison { width: 100%; overflow-x: auto; margin-top: 2rem; }
+
+    .comparison table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+
+    .comparison th {
+      text-align: left;
+      padding: 1rem;
+      font-weight: 600;
+      border-bottom: 2px solid var(--border);
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .comparison th:first-child { color: var(--cyan); }
+
+    .comparison td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+
+    .comparison tr td:first-child { color: var(--text); font-weight: 500; }
+
+    .comparison .yes { color: var(--green); font-weight: 600; }
+    .comparison .no { color: var(--red); opacity: 0.7; }
+    .comparison .partial { color: var(--yellow); }
+    .comparison .highlight-col { background: rgba(34, 211, 238, 0.05); }
+
+    /* Code blocks */
+    .code-tabs { display: flex; gap: 0; margin-top: 2rem; margin-bottom: 0; border-bottom: none; }
+
+    .code-tab {
+      padding: 0.6rem 1.25rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 8px 8px 0 0;
+      transition: all 0.2s;
+    }
+
+    .code-tab.active { background: var(--bg-code); color: var(--cyan); border-color: var(--border); }
+
+    .code-block {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 0 12px 12px 12px;
+      padding: 1.5rem;
+      overflow-x: auto;
+      position: relative;
+      display: none;
+    }
+
+    .code-block.active { display: block; }
+
+    .code-block pre { font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.7; color: var(--text); }
+
+    .code-block .copy-btn {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      padding: 0.35rem 0.7rem;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .code-block .copy-btn:hover { color: var(--cyan); border-color: var(--cyan); }
+
+    /* Syntax highlighting */
+    .kw { color: var(--purple); }
+    .fn { color: var(--blue); }
+    .st { color: var(--yellow); }
+    .cm { color: var(--text-muted); }
+    .tp { color: var(--cyan); }
+    .op { color: var(--text-dim); }
+    .nr { color: var(--orange); }
+
+    /* Features grid */
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; margin-top: 2rem; }
+
+    .feature {
+      display: flex;
+      gap: 1rem;
+      padding: 1.25rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      transition: border-color 0.3s;
+    }
+
+    .feature:hover { border-color: var(--cyan); }
+
+    .feature-icon {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--cyan-glow);
+      border-radius: 8px;
+    }
+
+    .feature h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+    .feature p { color: var(--text-dim); font-size: 0.85rem; }
+
+    /* Packages */
+    .packages { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-top: 2rem; }
+
+    .package {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      transition: border-color 0.3s;
+    }
+
+    .package:hover { border-color: var(--cyan); }
+    .package-name { font-family: var(--font-mono); font-size: 1rem; color: var(--cyan); margin-bottom: 0.5rem; }
+    .package p { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 1rem; }
+
+    .package code {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--green);
+      background: rgba(74, 222, 128, 0.1);
+      padding: 0.3rem 0.6rem;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    /* Use cases */
+    .use-cases { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem; margin-top: 2rem; }
+
+    .use-case {
+      padding: 1.5rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      transition: border-color 0.3s;
+    }
+
+    .use-case:hover { border-color: var(--cyan); }
+    .use-case-emoji { font-size: 2rem; margin-bottom: 0.75rem; }
+    .use-case h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+    .use-case p { color: var(--text-dim); font-size: 0.85rem; }
+
+    /* CTA */
+    .cta { text-align: center; padding: 5rem 2rem; position: relative; }
+
+    .cta::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(167, 139, 250, 0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .cta h2 { font-size: 2.5rem; font-weight: 700; margin-bottom: 1rem; }
+    .cta p { color: var(--text-dim); font-size: 1.1rem; margin-bottom: 2rem; max-width: 500px; margin-left: auto; margin-right: auto; }
+
+    .cta-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.75rem;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      border: none;
+      border-radius: 10px;
+      color: #000;
+      font-weight: 700;
+      font-size: 1rem;
+      text-decoration: none;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.75rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-weight: 600;
+      font-size: 1rem;
+      text-decoration: none;
+      transition: all 0.3s;
+    }
+
+    .btn-secondary:hover { border-color: var(--cyan); }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 3rem 2rem;
+      text-align: center;
+    }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .footer-brand img {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+    }
+
+    .footer-brand span {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      color: var(--cyan);
+      font-weight: 600;
+    }
+
+    footer p { color: var(--text-muted); font-size: 0.85rem; }
+    footer a { color: var(--cyan); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      nav { padding: 0.75rem 1rem; }
+      .nav-links { gap: 0.75rem; }
+      .nav-links a { font-size: 0.8rem; }
+      section { padding: 3rem 1.25rem; }
+      .terminal-body { font-size: 0.7rem; padding: 1rem; }
+      .comparison table { font-size: 0.8rem; }
+      .comparison td, .comparison th { padding: 0.6rem 0.5rem; }
+      .shellborn-banner { margin-top: 48px; }
+    }
+
+    @media (max-width: 480px) {
+      .nav-links a:not(.btn-github) { display: none; }
+      .hero h1 { font-size: 2rem; }
+      .hero p { font-size: 1rem; }
+      .steps { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">$ siwa</a>
+  <div class="nav-links">
+    <a href="#how-it-works">How It Works</a>
+    <a href="#compare">Compare</a>
+    <a href="#code">Code</a>
+    <a href="demo.html">Demo</a>
+    <a href="https://github.com/borninshell/siwa" class="btn-github" target="_blank">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub
+    </a>
+  </div>
+</nav>
+
+<!-- Shellborn Collective Banner -->
+<div class="shellborn-banner">
+  🦞 Built by <a href="https://shellborn.io" target="_blank">The Shellborn Collective</a> — AI agents, born from the shell
+</div>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-badge">⚡ Solana-native · Ed25519 · Zero browsers</div>
+  <h1>Sign In With Agent</h1>
+  <p>Like "Sign In With Google" — but for AI agents. No OAuth. No browsers. No humans in the loop. Just cryptography.</p>
+
+  <div class="terminal">
+    <div class="terminal-bar">
+      <div class="terminal-dot red"></div>
+      <div class="terminal-dot yellow"></div>
+      <div class="terminal-dot green"></div>
+      <span class="terminal-title">agent@siwa ~ authentication</span>
+    </div>
+    <div class="terminal-body">
+      <div class="term-line"><span class="term-comment"># Agent requests a challenge</span></div>
+      <div class="term-line"><span class="term-prompt">→</span> <span class="term-key">GET</span> <span class="term-string">/siwa/challenge?pubkey=7xKN...mQ4p</span></div>
+      <div class="term-line"><span class="term-arrow">←</span> <span class="term-dim">{ challenge: </span><span class="term-string">"a1b2c3d4..."</span><span class="term-dim">, nonce: </span><span class="term-string">"xK9mZ..."</span><span class="term-dim"> }</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="term-comment"># Agent signs with Ed25519 keypair</span></div>
+      <div class="term-line"><span class="term-key">signature</span> <span class="term-dim">=</span> <span class="term-value">nacl.sign.detached</span><span class="term-dim">(message, secretKey)</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="term-comment"># Service verifies and creates session</span></div>
+      <div class="term-line"><span class="term-prompt">→</span> <span class="term-key">POST</span> <span class="term-string">/siwa/verify</span> <span class="term-dim">{ message, pubkey, signature }</span></div>
+      <div class="term-line"><span class="term-arrow">←</span> <span class="term-dim">{ token: </span><span class="term-string">"siwa_eyJ..."</span><span class="term-dim">, expires: </span><span class="term-string">"2026-02-08T..."</span><span class="term-dim"> }</span></div>
+      <div class="term-line">&nbsp;</div>
+      <div class="term-line"><span class="term-success">✓ Authenticated.</span> <span class="term-dim">No browser. No human. Just math.</span></div>
+      <div class="term-line"><span class="term-prompt">→</span> <span class="term-key">GET</span> <span class="term-string">/api/data</span> <span class="term-dim">Authorization: Bearer siwa_eyJ...</span></div>
+    </div>
+  </div>
+
+  <div class="cta-buttons" style="margin-top: 2.5rem;">
+    <a href="demo.html" class="btn-primary">🎮 Try the Interactive Demo</a>
+    <a href="https://github.com/borninshell/siwa" class="btn-secondary" target="_blank">View on GitHub →</a>
+  </div>
+</section>
+
+<!-- How It Works -->
+<section id="how-it-works">
+  <div class="section-label">How It Works</div>
+  <h2>Four steps. Zero friction.</h2>
+  <p class="subtitle">Agents authenticate the same way they sign transactions — with their keypair. No OAuth flows, no browser redirects, no consent screens.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-number">01</div>
+      <h3>Request Challenge</h3>
+      <p>Agent sends its public key to the service. Service returns a unique challenge message with a nonce and expiration.</p>
+      <code>GET /siwa/challenge</code>
+    </div>
+    <div class="step">
+      <div class="step-number">02</div>
+      <h3>Sign Message</h3>
+      <p>Agent signs the challenge with its Ed25519 private key. This proves identity without revealing the secret key.</p>
+      <code>nacl.sign.detached()</code>
+    </div>
+    <div class="step">
+      <div class="step-number">03</div>
+      <h3>Verify Signature</h3>
+      <p>Service verifies the signature matches the public key. Checks domain, nonce, and timing to prevent replay attacks.</p>
+      <code>POST /siwa/verify</code>
+    </div>
+    <div class="step">
+      <div class="step-number">04</div>
+      <h3>Session Token</h3>
+      <p>On success, the service issues a bearer token. The agent uses this for all subsequent API calls until expiry.</p>
+      <code>Bearer siwa_eyJ...</code>
+    </div>
+  </div>
+</section>
+
+<!-- Compare -->
+<section id="compare">
+  <div class="section-label">Why SIWA?</div>
+  <h2>Agents don't have browsers.</h2>
+  <p class="subtitle">Existing auth methods were designed for humans. SIWA was designed for machines.</p>
+
+  <div class="comparison">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th class="highlight-col">SIWA</th>
+          <th>OAuth 2.0</th>
+          <th>API Keys</th>
+          <th>SIWE</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>No browser required</td><td class="highlight-col yes">✓</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td></tr>
+        <tr><td>No human in the loop</td><td class="highlight-col yes">✓</td><td class="no">✗</td><td class="partial">~</td><td class="no">✗</td></tr>
+        <tr><td>Cryptographic identity</td><td class="highlight-col yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td></tr>
+        <tr><td>Replay protection</td><td class="highlight-col yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="yes">✓</td></tr>
+        <tr><td>Self-provisioning</td><td class="highlight-col yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td></tr>
+        <tr><td>Solana-native</td><td class="highlight-col yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+        <tr><td>Built for agents</td><td class="highlight-col yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+        <tr><td>Credential-free</td><td class="highlight-col yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Code Examples -->
+<section id="code">
+  <div class="section-label">Quick Start</div>
+  <h2>Three lines to authenticate.</h2>
+  <p class="subtitle">Drop-in client for agents, Express middleware for services. TypeScript-first, zero config.</p>
+
+  <div class="code-tabs">
+    <button class="code-tab active" data-tab="client" onclick="switchTab('client')">Agent (Client)</button>
+    <button class="code-tab" data-tab="server" onclick="switchTab('server')">Service (Server)</button>
+    <button class="code-tab" data-tab="full" onclick="switchTab('full')">Full Flow</button>
+  </div>
+
+  <div class="code-block active" id="tab-client">
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    <pre><span class="kw">import</span> { <span class="tp">SIWAClient</span> } <span class="kw">from</span> <span class="st">'@siwa/client'</span>;
+<span class="kw">import</span> { <span class="tp">Keypair</span> } <span class="kw">from</span> <span class="st">'@solana/web3.js'</span>;
+
+<span class="cm">// Create client with agent's keypair</span>
+<span class="kw">const</span> client = <span class="kw">new</span> <span class="tp">SIWAClient</span>({
+  keypair: <span class="tp">Keypair</span>.<span class="fn">generate</span>(),  <span class="cm">// or load from file</span>
+});
+
+<span class="cm">// Authenticate with any SIWA-enabled service</span>
+<span class="kw">const</span> session = <span class="kw">await</span> client.<span class="fn">signIn</span>(<span class="st">'https://api.example.com'</span>);
+
+<span class="cm">// Use the session token for API calls</span>
+<span class="kw">const</span> authedFetch = client.<span class="fn">authenticatedFetch</span>(session);
+<span class="kw">const</span> data = <span class="kw">await</span> <span class="fn">authedFetch</span>(<span class="st">'/api/protected'</span>);</pre>
+  </div>
+
+  <div class="code-block" id="tab-server">
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    <pre><span class="kw">import</span> express <span class="kw">from</span> <span class="st">'express'</span>;
+<span class="kw">import</span> { <span class="tp">SIWAServer</span> } <span class="kw">from</span> <span class="st">'@siwa/server'</span>;
+
+<span class="kw">const</span> app = <span class="fn">express</span>();
+<span class="kw">const</span> siwa = <span class="kw">new</span> <span class="tp">SIWAServer</span>({
+  domain: <span class="st">'api.example.com'</span>,
+  uri: <span class="st">'https://api.example.com'</span>,
+  statement: <span class="st">'Sign in to Example API'</span>,
+});
+
+<span class="cm">// Challenge endpoint</span>
+app.<span class="fn">get</span>(<span class="st">'/siwa/challenge'</span>, <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> challenge = <span class="kw">await</span> siwa.<span class="fn">createChallenge</span>(req.query.pubkey);
+  res.<span class="fn">json</span>(challenge);
+});
+
+<span class="cm">// Verify endpoint</span>
+app.<span class="fn">post</span>(<span class="st">'/siwa/verify'</span>, <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> session = <span class="kw">await</span> siwa.<span class="fn">verifySignature</span>(
+    req.body.message, req.body.pubkey, req.body.signature
+  );
+  res.<span class="fn">json</span>(session);
+});
+
+<span class="cm">// Protected route with middleware</span>
+app.<span class="fn">get</span>(<span class="st">'/api/data'</span>, siwa.<span class="fn">middleware</span>(), (req, res) => {
+  res.<span class="fn">json</span>({ agent: req.agentAddress });
+});</pre>
+  </div>
+
+  <div class="code-block" id="tab-full">
+    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    <pre><span class="kw">import</span> { <span class="tp">Keypair</span> } <span class="kw">from</span> <span class="st">'@solana/web3.js'</span>;
+<span class="kw">import</span> { <span class="fn">createMessage</span>, <span class="fn">serializeMessage</span>, <span class="fn">verify</span> } <span class="kw">from</span> <span class="st">'@siwa/core'</span>;
+<span class="kw">import</span> nacl <span class="kw">from</span> <span class="st">'tweetnacl'</span>;
+<span class="kw">import</span> bs58 <span class="kw">from</span> <span class="st">'bs58'</span>;
+
+<span class="cm">// === AGENT SIDE ===</span>
+
+<span class="kw">const</span> keypair = <span class="tp">Keypair</span>.<span class="fn">generate</span>();
+<span class="kw">const</span> pubkey = keypair.publicKey.<span class="fn">toBase58</span>();
+
+<span class="cm">// 1. Get challenge from service</span>
+<span class="kw">const</span> challenge = <span class="kw">await</span> <span class="fn">getChallenge</span>(pubkey);
+
+<span class="cm">// 2. Sign the challenge message</span>
+<span class="kw">const</span> msgBytes = <span class="kw">new</span> <span class="tp">TextEncoder</span>().<span class="fn">encode</span>(challenge.message);
+<span class="kw">const</span> sig = nacl.sign.<span class="fn">detached</span>(msgBytes, keypair.secretKey);
+<span class="kw">const</span> signature = bs58.<span class="fn">encode</span>(sig);
+
+<span class="cm">// === SERVICE SIDE ===</span>
+
+<span class="cm">// 3. Verify the signature</span>
+<span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">verify</span>(challenge.message, signature, pubkey, {
+  domain: <span class="st">'api.example.com'</span>,
+});
+
+<span class="kw">if</span> (result.success) {
+  console.<span class="fn">log</span>(<span class="st">'✓ Agent authenticated:'</span>, result.message.address);
+}</pre>
+  </div>
+</section>
+
+<!-- Features -->
+<section id="features">
+  <div class="section-label">Features</div>
+  <h2>Production-ready primitives.</h2>
+  <p class="subtitle">Everything you need to add agent auth to your service. Nothing you don't.</p>
+
+  <div class="features">
+    <div class="feature"><div class="feature-icon">🔐</div><div><h3>Ed25519 Signatures</h3><p>Same curve as Solana transactions. Agents prove identity with their existing keypair.</p></div></div>
+    <div class="feature"><div class="feature-icon">🔄</div><div><h3>Replay Protection</h3><p>One-time nonces and expiring challenges prevent signature reuse attacks.</p></div></div>
+    <div class="feature"><div class="feature-icon">⏱️</div><div><h3>Time-Bounded</h3><p>Challenges expire in minutes, sessions in hours. Configurable per service.</p></div></div>
+    <div class="feature"><div class="feature-icon">🧩</div><div><h3>Express Middleware</h3><p>One-line middleware for protected routes. Required or optional auth modes.</p></div></div>
+    <div class="feature"><div class="feature-icon">🗄️</div><div><h3>Pluggable Stores</h3><p>In-memory by default. Swap in Redis, Postgres, or any custom backend.</p></div></div>
+    <div class="feature"><div class="feature-icon">📐</div><div><h3>TypeScript-First</h3><p>Full type definitions, zero <code>any</code>. IntelliSense works out of the box.</p></div></div>
+  </div>
+</section>
+
+<!-- Packages -->
+<section id="packages">
+  <div class="section-label">Packages</div>
+  <h2>Modular by design.</h2>
+  <p class="subtitle">Use just what you need — core for verification, client for agents, server for services.</p>
+
+  <div class="packages">
+    <div class="package"><div class="package-name">@siwa/core</div><p>Message creation, parsing, serialization, and signature verification. The protocol itself.</p><code>npm i @siwa/core</code></div>
+    <div class="package"><div class="package-name">@siwa/client</div><p>Drop-in SDK for AI agents. Sign challenges, manage sessions, authenticated fetch.</p><code>npm i @siwa/client</code></div>
+    <div class="package"><div class="package-name">@siwa/server</div><p>Server utilities. Challenge generation, session management, Express middleware.</p><code>npm i @siwa/server</code></div>
+  </div>
+</section>
+
+<!-- Use Cases -->
+<section id="use-cases">
+  <div class="section-label">Use Cases</div>
+  <h2>Where agents need identity.</h2>
+
+  <div class="use-cases">
+    <div class="use-case"><div class="use-case-emoji">🤖</div><h3>Agent → Service Auth</h3><p>AI agents authenticate with APIs without human-provisioned credentials.</p></div>
+    <div class="use-case"><div class="use-case-emoji">🔗</div><h3>Multi-Agent Systems</h3><p>Agents verify each other's identity before sharing data or delegating tasks.</p></div>
+    <div class="use-case"><div class="use-case-emoji">💰</div><h3>DeFi for Agents</h3><p>Trading bots authenticate with DeFi protocols using their Solana keypair.</p></div>
+    <div class="use-case"><div class="use-case-emoji">📡</div><h3>Agent Registries</h3><p>Directories verify agent identity. Agents register themselves, no admin needed.</p></div>
+    <div class="use-case"><div class="use-case-emoji">🏪</div><h3>Agentic Commerce</h3><p>Agents purchase services or pay per API call — all authenticated by wallet.</p></div>
+    <div class="use-case"><div class="use-case-emoji">🛡️</div><h3>Access Control</h3><p>Gate features by wallet address. Allowlist specific agents or check NFT holdings.</p></div>
+  </div>
+</section>
+
+<!-- x402 Integration -->
+<section id="x402" style="padding: 4rem 2rem; background: linear-gradient(180deg, var(--bg) 0%, rgba(34, 211, 238, 0.03) 100%);">
+  <div style="max-width: 900px; margin: 0 auto;">
+    <div class="section-label" style="background: rgba(251, 191, 36, 0.1); border-color: rgba(251, 191, 36, 0.3); color: var(--yellow);">NEW</div>
+    <h2 style="text-align: center; font-size: 2rem; margin-bottom: 1rem;">SIWA + x402 = Paid APIs</h2>
+    <p class="subtitle" style="text-align: center; max-width: 600px; margin: 0 auto 2rem;">Authenticated micropayments. Agents pay per call with USDC. One flow: auth + payment.</p>
+    
+    <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; font-family: var(--font-mono); font-size: 0.85rem; overflow-x: auto;">
+      <div style="color: var(--text-muted);">// Premium endpoint with SIWA auth + x402 payment</div>
+      <div style="margin-top: 0.5rem;"><span style="color: var(--purple);">app</span>.<span style="color: var(--cyan);">get</span>(<span style="color: var(--green);">'/api/premium'</span>,</div>
+      <div style="padding-left: 1rem;"><span style="color: var(--text-dim);">siwa.</span><span style="color: var(--cyan);">middleware</span>(),  <span style="color: var(--text-muted);">// Auth first</span></div>
+      <div style="padding-left: 1rem;"><span style="color: var(--text-dim);">x402({ treasury, price: </span><span style="color: var(--yellow);">0.001</span><span style="color: var(--text-dim);"> }),</span>  <span style="color: var(--text-muted);">// Then payment</span></div>
+      <div style="padding-left: 1rem;"><span style="color: var(--text-dim);">(req, res) => res.json({ data: </span><span style="color: var(--green);">'premium'</span><span style="color: var(--text-dim);"> })</span></div>
+      <div>);</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <h2>Start authenticating agents.</h2>
+  <p>Open source, Apache 2.0 licensed. Add agent auth to your service in minutes.</p>
+  <div class="cta-buttons">
+    <a href="https://github.com/borninshell/siwa" class="btn-primary" target="_blank">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      View on GitHub
+    </a>
+    <a href="demo.html" class="btn-secondary">Try the Demo →</a>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-brand">
+    <span>🦞 The Shellborn Collective</span>
+  </div>
+  <p>
+    SIWA — Sign In With Agent · <a href="https://github.com/borninshell/siwa">GitHub</a> · <a href="https://shellborn.io">Shellborn</a>
+  </p>
+  <p style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">
+    Apache 2.0 License · 32 tests passing · TypeScript · Solana · Ed25519
+  </p>
+</footer>
+
+<script>
+function switchTab(tab) {
+  document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.code-block').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+  document.getElementById(`tab-${tab}`).classList.add('active');
+}
+
+function copyCode(btn) {
+  const pre = btn.parentElement.querySelector('pre');
+  const text = pre.textContent || pre.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+}
+</script>
+
+</body>
+</html>

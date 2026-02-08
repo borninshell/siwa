@@ -1,0 +1,371 @@
+/**
+ * @siwa/server - SIWA Server Utilities
+ * 
+ * Enables services to authenticate AI agents via SIWA.
+ */
+
+import {
+  createMessage,
+  serializeMessage,
+  verify,
+  generateNonce,
+  isValidSolanaAddress,
+  SIWAChallenge,
+  SIWASession,
+  SIWAMessage,
+} from '@siwa/core';
+import { createHash, randomBytes } from 'crypto';
+
+export interface SIWAServerOptions {
+  /** Domain name of the service */
+  domain: string;
+  
+  /** Full URI of the service */
+  uri: string;
+  
+  /** Challenge expiration in minutes (default: 5) */
+  challengeExpirationMinutes?: number;
+  
+  /** Session expiration in minutes (default: 60) */
+  sessionExpirationMinutes?: number;
+  
+  /** Custom nonce store (default: in-memory Map) */
+  nonceStore?: NonceStore;
+  
+  /** Custom session store (default: in-memory Map) */
+  sessionStore?: SessionStore;
+  
+  /** Statement to include in auth message */
+  statement?: string;
+  
+  /** Resources/scopes to request */
+  resources?: string[];
+}
+
+export interface NonceStore {
+  set(nonce: string, data: NonceData): Promise<void>;
+  get(nonce: string): Promise<NonceData | null>;
+  delete(nonce: string): Promise<void>;
+  /** Atomically delete and return nonce data (prevents TOCTOU race) */
+  deleteAndGet?(nonce: string): Promise<NonceData | null>;
+}
+
+export interface NonceData {
+  pubkey: string;
+  message: string;
+  expiresAt: Date;
+}
+
+export interface SessionStore {
+  set(token: string, session: SessionData): Promise<void>;
+  get(token: string): Promise<SessionData | null>;
+  delete(token: string): Promise<void>;
+}
+
+export interface SessionData {
+  address: string;
+  expiresAt: Date;
+  scopes?: string[];
+  message?: SIWAMessage;
+}
+
+/**
+ * Simple in-memory nonce store with expiration checks
+ */
+class InMemoryNonceStore implements NonceStore {
+  private store = new Map<string, NonceData>();
+  
+  async set(nonce: string, data: NonceData): Promise<void> {
+    const delay = data.expiresAt.getTime() - Date.now();
+    // Don't store already-expired nonces
+    if (delay <= 0) {
+      return;
+    }
+    this.store.set(nonce, data);
+    // Auto-cleanup expired nonces
+    setTimeout(() => this.store.delete(nonce), delay);
+  }
+  
+  async get(nonce: string): Promise<NonceData | null> {
+    const data = this.store.get(nonce);
+    if (!data) return null;
+    // Check expiration
+    if (data.expiresAt < new Date()) {
+      this.store.delete(nonce);
+      return null;
+    }
+    return data;
+  }
+  
+  async delete(nonce: string): Promise<void> {
+    this.store.delete(nonce);
+  }
+  
+  /** Atomically delete and return nonce data (prevents TOCTOU race) */
+  async deleteAndGet(nonce: string): Promise<NonceData | null> {
+    const data = this.store.get(nonce);
+    if (!data) return null;
+    // Delete first (atomic in single-threaded JS)
+    this.store.delete(nonce);
+    // Then check expiration
+    if (data.expiresAt < new Date()) {
+      return null;
+    }
+    return data;
+  }
+}
+
+/**
+ * Simple in-memory session store with expiration checks
+ */
+class InMemorySessionStore implements SessionStore {
+  private store = new Map<string, SessionData>();
+  
+  async set(token: string, session: SessionData): Promise<void> {
+    const delay = session.expiresAt.getTime() - Date.now();
+    // Don't store already-expired sessions
+    if (delay <= 0) {
+      return;
+    }
+    this.store.set(token, session);
+    // Auto-cleanup expired sessions
+    setTimeout(() => this.store.delete(token), delay);
+  }
+  
+  async get(token: string): Promise<SessionData | null> {
+    const session = this.store.get(token);
+    if (!session) return null;
+    if (session.expiresAt < new Date()) {
+      this.store.delete(token);
+      return null;
+    }
+    return session;
+  }
+  
+  async delete(token: string): Promise<void> {
+    this.store.delete(token);
+  }
+}
+
+/**
+ * Generate a secure session token
+ */
+function generateSessionToken(): string {
+  return `siwa_${randomBytes(32).toString('base64url')}`;
+}
+
+/**
+ * SIWA Server
+ */
+export class SIWAServer {
+  private domain: string;
+  private uri: string;
+  private challengeExpirationMinutes: number;
+  private sessionExpirationMinutes: number;
+  private nonceStore: NonceStore;
+  private sessionStore: SessionStore;
+  private statement?: string;
+  private resources?: string[];
+  
+  constructor(options: SIWAServerOptions) {
+    this.domain = options.domain;
+    this.uri = options.uri;
+    this.challengeExpirationMinutes = options.challengeExpirationMinutes ?? 5;
+    this.sessionExpirationMinutes = options.sessionExpirationMinutes ?? 60;
+    this.nonceStore = options.nonceStore ?? new InMemoryNonceStore();
+    this.sessionStore = options.sessionStore ?? new InMemorySessionStore();
+    this.statement = options.statement;
+    this.resources = options.resources;
+  }
+  
+  /**
+   * Generate a challenge for an agent to sign
+   */
+  async createChallenge(pubkey: string): Promise<SIWAChallenge> {
+    // Validate pubkey
+    if (!isValidSolanaAddress(pubkey)) {
+      throw new Error('Invalid Solana public key');
+    }
+    
+    // Generate nonce
+    const nonce = generateNonce(32);
+    
+    // Create message
+    const message = createMessage({
+      domain: this.domain,
+      address: pubkey,
+      uri: this.uri,
+      statement: this.statement,
+      resources: this.resources,
+      nonce,
+      expirationMinutes: this.challengeExpirationMinutes,
+    });
+    
+    const messageText = serializeMessage(message);
+    const expiresAt = new Date(Date.now() + this.challengeExpirationMinutes * 60 * 1000);
+    
+    // Store nonce
+    await this.nonceStore.set(nonce, {
+      pubkey,
+      message: messageText,
+      expiresAt,
+    });
+    
+    // Create challenge ID (hash of nonce)
+    const challengeId = createHash('sha256').update(nonce).digest('base64url').slice(0, 16);
+    
+    return {
+      challengeId: `ch_${challengeId}`,
+      message: messageText,
+      messageHash: createHash('sha256').update(messageText).digest('base64url'),
+      expiresAt: expiresAt.toISOString(),
+    };
+  }
+  
+  /**
+   * Verify a signed challenge and create a session
+   */
+  async verifyChallenge(
+    challengeId: string,
+    pubkey: string,
+    signature: string
+  ): Promise<SIWASession> {
+    // Validate pubkey
+    if (!isValidSolanaAddress(pubkey)) {
+      throw new Error('Invalid Solana public key');
+    }
+    
+    // Find the challenge by trying to reconstruct the nonce
+    // (In production, you'd store challengeId -> nonce mapping)
+    // For MVP, we'll iterate through recent nonces
+    
+    // Actually, let's store by the message content and pubkey
+    // The client sends back the signed message, so we can verify directly
+    
+    // For this implementation, we need the original message
+    // Let's modify to accept the message text as well
+    throw new Error('Use verifySignature instead');
+  }
+  
+  /**
+   * Verify a signature against the original message
+   */
+  async verifySignature(
+    message: string,
+    pubkey: string,
+    signature: string
+  ): Promise<SIWASession> {
+    // Verify the signature
+    const result = await verify(message, signature, pubkey, {
+      domain: this.domain,
+    });
+    
+    if (!result.success) {
+      throw new Error(result.error ?? 'Verification failed');
+    }
+    
+    const siwaMessage = result.message!;
+    
+    // ATOMIC nonce consumption to prevent TOCTOU race condition
+    // Use deleteAndGet if available, otherwise fall back to get+delete
+    let nonceData: NonceData | null;
+    if (this.nonceStore.deleteAndGet) {
+      nonceData = await this.nonceStore.deleteAndGet(siwaMessage.nonce);
+    } else {
+      nonceData = await this.nonceStore.get(siwaMessage.nonce);
+      if (nonceData) {
+        await this.nonceStore.delete(siwaMessage.nonce);
+      }
+    }
+    
+    if (!nonceData) {
+      throw new Error('Invalid or expired nonce');
+    }
+    
+    // Verify pubkey matches
+    if (nonceData.pubkey !== pubkey) {
+      throw new Error('Public key mismatch');
+    }
+    
+    // Create session
+    const token = generateSessionToken();
+    const expiresAt = new Date(Date.now() + this.sessionExpirationMinutes * 60 * 1000);
+    
+    const sessionData: SessionData = {
+      address: pubkey,
+      expiresAt,
+      scopes: siwaMessage.resources,
+      message: siwaMessage,
+    };
+    
+    await this.sessionStore.set(token, sessionData);
+    
+    return {
+      token,
+      address: pubkey,
+      expiresAt: expiresAt.toISOString(),
+      scopes: siwaMessage.resources,
+    };
+  }
+  
+  /**
+   * Validate a session token
+   */
+  async validateSession(token: string): Promise<SessionData | null> {
+    return this.sessionStore.get(token);
+  }
+  
+  /**
+   * Revoke a session
+   */
+  async revokeSession(token: string): Promise<void> {
+    await this.sessionStore.delete(token);
+  }
+  
+  /**
+   * Express-style middleware for protected routes
+   */
+  middleware(options?: { required?: boolean }) {
+    const required = options?.required ?? true;
+    
+    return async (req: any, res: any, next: any) => {
+      const authHeader = req.headers.authorization;
+      
+      if (!authHeader) {
+        if (required) {
+          return res.status(401).json({ error: 'Authorization header required' });
+        }
+        return next();
+      }
+      
+      const [type, token] = authHeader.split(' ');
+      
+      if (type !== 'Bearer' || !token) {
+        return res.status(401).json({ error: 'Invalid authorization header' });
+      }
+      
+      const session = await this.validateSession(token);
+      
+      if (!session) {
+        if (required) {
+          return res.status(401).json({ error: 'Invalid or expired session' });
+        }
+        return next();
+      }
+      
+      // Attach session to request
+      req.siwaSession = session;
+      req.agentAddress = session.address;
+      
+      next();
+    };
+  }
+}
+
+// Re-export core types
+export {
+  SIWAMessage,
+  SIWAChallenge,
+  SIWASession,
+  SIWAVerificationResult,
+} from '@siwa/core';

@@ -1,0 +1,24 @@
+{
+  "name": "@siwa/x402",
+  "version": "0.1.0",
+  "description": "x402 payment integration for SIWA - authenticated micropayments for agents",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@siwa/core": "workspace:*",
+    "@siwa/server": "workspace:*",
+    "@solana/web3.js": "^1.98.0",
+    "@solana/spl-token": "^0.4.0",
+    "tweetnacl": "^1.0.3"
+  },
+  "peerDependencies": {
+    "express": "^4.0.0 || ^5.0.0"
+  },
+  "author": "The Shellborn Collective",
+  "license": "Apache-2.0"
+}

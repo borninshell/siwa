@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIWA Demo — Live Authentication Flow</title>
+  <meta name="description" content="Try SIWA authentication in your browser. See wallet-based agent auth in action.">
+  <style>
+    :root {
+      --bg: #0a0e17;
+      --bg-card: #111827;
+      --border: #1e293b;
+      --text: #e2e8f0;
+      --text-dim: #94a3b8;
+      --cyan: #22d3ee;
+      --green: #4ade80;
+      --purple: #a78bfa;
+      --red: #f87171;
+      --yellow: #fbbf24;
+      --font-mono: 'SF Mono', 'Fira Code', monospace;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo {
+      font-family: var(--font-mono);
+      font-size: 1.5rem;
+      color: var(--cyan);
+      margin-bottom: 0.5rem;
+    }
+    .powered-by {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+    .powered-by a {
+      color: var(--cyan);
+      text-decoration: none;
+    }
+    h1 { font-size: 2rem; margin: 1rem 0 0.5rem; }
+    .subtitle { color: var(--text-dim); }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+    @media (max-width: 768px) {
+      .demo-grid { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+    .panel h2 {
+      font-size: 1rem;
+      color: var(--cyan);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .panel h2::before {
+      content: attr(data-step);
+      background: var(--cyan);
+      color: var(--bg);
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: bold;
+    }
+
+    .input-group { margin-bottom: 1rem; }
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-bottom: 0.25rem;
+    }
+    input, textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+    }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--cyan);
+    }
+    textarea { resize: vertical; min-height: 120px; }
+
+    button {
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1.5rem;
+      color: var(--bg);
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      font-size: 0.9rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(34, 211, 238, 0.3);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    button.secondary {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .status {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      display: none;
+    }
+    .status.success {
+      display: block;
+      background: rgba(74, 222, 128, 0.1);
+      border: 1px solid rgba(74, 222, 128, 0.3);
+      color: var(--green);
+    }
+    .status.error {
+      display: block;
+      background: rgba(248, 113, 113, 0.1);
+      border: 1px solid rgba(248, 113, 113, 0.3);
+      color: var(--red);
+    }
+    .status.pending {
+      display: block;
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      color: var(--yellow);
+    }
+
+    .code-block {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .flow-diagram {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 2rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .flow-header {
+      display: flex;
+      justify-content: space-between;
+      padding: 0 2rem;
+      margin-bottom: 1rem;
+    }
+    .flow-header span {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--cyan);
+    }
+    .flow-step {
+      display: flex;
+      align-items: center;
+      padding: 0.5rem 0;
+      position: relative;
+    }
+    .flow-step::before,
+    .flow-step::after {
+      content: '';
+      position: absolute;
+      left: 2rem;
+      width: 2px;
+      background: var(--border);
+    }
+    .flow-step::before { top: 0; height: 50%; }
+    .flow-step::after { bottom: 0; height: 50%; }
+    .flow-step:first-of-type::before { display: none; }
+    .flow-step:last-of-type::after { display: none; }
+    .flow-line {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      padding: 0 2.5rem;
+    }
+    .flow-line.to-right { flex-direction: row; }
+    .flow-line.to-left { flex-direction: row-reverse; }
+    .flow-arrow {
+      flex: 1;
+      height: 2px;
+      background: linear-gradient(90deg, var(--cyan), var(--purple));
+      position: relative;
+    }
+    .flow-line.to-left .flow-arrow {
+      background: linear-gradient(90deg, var(--purple), var(--cyan));
+    }
+    .flow-arrow::after {
+      content: '';
+      position: absolute;
+      right: -1px;
+      top: -4px;
+      border: 5px solid transparent;
+      border-left: 6px solid var(--purple);
+    }
+    .flow-line.to-left .flow-arrow::after {
+      right: auto;
+      left: -1px;
+      border-left: none;
+      border-right: 6px solid var(--cyan);
+    }
+    .flow-label {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      padding: 0.25rem 0.75rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .flow-label.success {
+      color: var(--green);
+      border-color: rgba(74, 222, 128, 0.3);
+    }
+    .flow-num {
+      width: 20px;
+      height: 20px;
+      background: var(--cyan);
+      color: var(--bg);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      font-weight: bold;
+      margin-right: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--cyan); text-decoration: none; }
+
+    .badge {
+      display: inline-block;
+      background: rgba(34, 211, 238, 0.1);
+      border: 1px solid rgba(34, 211, 238, 0.3);
+      color: var(--cyan);
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">$ siwa demo</div>
+      <div class="powered-by">
+        Powered by <a href="https://shellborn.io" target="_blank">The Shellborn Collective</a>
+      </div>
+      <h1>SIWA Live Demo</h1>
+      <p class="subtitle">Experience wallet-based agent authentication</p>
+    </header>
+
+    <div class="badge">🔐 No wallet extension needed — we simulate an agent keypair</div>
+
+    <div class="flow-diagram">
+      <div class="flow-header">
+        <span>🤖 Agent</span>
+        <span>🔐 Service</span>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line to-right">
+          <span class="flow-num">1</span>
+          <span class="flow-label">GET /siwa/challenge</span>
+          <div class="flow-arrow"></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line to-left">
+          <span class="flow-num">2</span>
+          <span class="flow-label">{ challenge, nonce, ... }</span>
+          <div class="flow-arrow"></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line to-right">
+          <span class="flow-num">3</span>
+          <span class="flow-label">POST /siwa/verify { message, signature }</span>
+          <div class="flow-arrow"></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line to-left">
+          <span class="flow-num">4</span>
+          <span class="flow-label success">{ session_token, expires }</span>
+          <div class="flow-arrow"></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-line to-right">
+          <span class="flow-num">5</span>
+          <span class="flow-label">API calls with token ✓</span>
+          <div class="flow-arrow"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+      <div class="panel">
+        <h2 data-step="1">Generate Agent Keypair</h2>
+        <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1rem;">
+          In production, this is your agent's Solana wallet.
+        </p>
+        <button onclick="generateKeypair()">Generate New Keypair</button>
+        <div class="input-group" style="margin-top: 1rem;">
+          <label>Public Key (base58)</label>
+          <input type="text" id="pubkey" readonly placeholder="Click generate...">
+        </div>
+        <div id="keypair-status" class="status"></div>
+      </div>
+
+      <div class="panel">
+        <h2 data-step="2">Request Challenge</h2>
+        <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1rem;">
+          Service returns a message for the agent to sign.
+        </p>
+        <button onclick="requestChallenge()" id="challenge-btn" disabled>Request Challenge</button>
+        <div class="input-group" style="margin-top: 1rem;">
+          <label>Challenge Message</label>
+          <textarea id="challenge-message" readonly placeholder="Challenge will appear here..."></textarea>
+        </div>
+        <div id="challenge-status" class="status"></div>
+      </div>
+
+      <div class="panel">
+        <h2 data-step="3">Sign & Verify</h2>
+        <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1rem;">
+          Agent signs with Ed25519 keypair, service verifies.
+        </p>
+        <button onclick="signAndVerify()" id="verify-btn" disabled>Sign & Verify</button>
+        <div class="input-group" style="margin-top: 1rem;">
+          <label>Signature (base58)</label>
+          <input type="text" id="signature" readonly placeholder="Signature will appear here...">
+        </div>
+        <div id="verify-status" class="status"></div>
+      </div>
+
+      <div class="panel">
+        <h2 data-step="4">Session Token</h2>
+        <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1rem;">
+          Authenticated! Use this token for API calls.
+        </p>
+        <div class="input-group">
+          <label>Session Token</label>
+          <input type="text" id="session-token" readonly placeholder="Complete flow to get token...">
+        </div>
+        <div class="input-group">
+          <label>Expires At</label>
+          <input type="text" id="session-expires" readonly placeholder="—">
+        </div>
+        <button onclick="testProtectedEndpoint()" id="test-btn" disabled class="secondary">
+          Test Protected Endpoint
+        </button>
+        <div id="session-status" class="status"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top: 2rem;">
+      <h2 style="margin-bottom: 1rem;">📋 Request/Response Log</h2>
+      <div class="code-block" id="log">// Interaction log will appear here...</div>
+    </div>
+
+    <footer>
+      <p>
+        <a href="index.html">← Back to SIWA</a> · 
+        <a href="https://github.com/borninshell/siwa" target="_blank">GitHub</a> · 
+        <a href="https://shellborn.io" target="_blank">The Shellborn Collective</a>
+      </p>
+      <p style="margin-top: 0.5rem; font-size: 0.75rem;">
+        🦀 This demo runs entirely in your browser using simulated keys.
+      </p>
+    </footer>
+  </div>
+
+  <script src="https://unpkg.com/tweetnacl@1.0.3/nacl-fast.min.js"></script>
+  <script src="https://bundle.run/bs58@4.0.1"></script>
+  <script>
+    // State
+    let keypair = null;
+    let challenge = null;
+    let signature = null;
+    let sessionToken = null;
+
+    // Simulated server state (in-browser demo)
+    const serverNonces = new Map();
+    const serverSessions = new Map();
+
+    function log(text) {
+      const logEl = document.getElementById('log');
+      const time = new Date().toISOString().split('T')[1].split('.')[0];
+      logEl.textContent += `\n[${time}] ${text}`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function setStatus(id, type, message) {
+      const el = document.getElementById(id);
+      el.className = `status ${type}`;
+      el.textContent = message;
+    }
+
+    // Step 1: Generate Keypair
+    function generateKeypair() {
+      keypair = nacl.sign.keyPair();
+      const pubkeyBase58 = bs58.encode(keypair.publicKey);
+      document.getElementById('pubkey').value = pubkeyBase58;
+      document.getElementById('challenge-btn').disabled = false;
+      setStatus('keypair-status', 'success', '✓ Keypair generated (Ed25519)');
+      log(`Generated keypair: ${pubkeyBase58.slice(0, 8)}...${pubkeyBase58.slice(-4)}`);
+    }
+
+    // Step 2: Request Challenge
+    function requestChallenge() {
+      const pubkey = document.getElementById('pubkey').value;
+      const nonce = generateNonce(32);
+      const now = new Date();
+      const expires = new Date(now.getTime() + 5 * 60 * 1000);
+      
+      const message = `demo.siwa.dev wants you to sign in with your Solana account:
+${pubkey}
+
+Sign in to SIWA Demo
+
+URI: https://demo.siwa.dev
+Version: 1
+Chain ID: mainnet-beta
+Nonce: ${nonce}
+Issued At: ${now.toISOString()}
+Expiration Time: ${expires.toISOString()}`;
+
+      challenge = { nonce, message, pubkey };
+      serverNonces.set(nonce, { pubkey, expires });
+
+      document.getElementById('challenge-message').value = message;
+      document.getElementById('verify-btn').disabled = false;
+      setStatus('challenge-status', 'success', '✓ Challenge received');
+      log(`← Challenge: nonce=${nonce.slice(0, 8)}...`);
+    }
+
+    // Step 3: Sign and Verify
+    function signAndVerify() {
+      if (!keypair || !challenge) return;
+
+      // Sign
+      const messageBytes = new TextEncoder().encode(challenge.message);
+      const signatureBytes = nacl.sign.detached(messageBytes, keypair.secretKey);
+      signature = bs58.encode(signatureBytes);
+      document.getElementById('signature').value = signature;
+      log(`→ Signed: ${signature.slice(0, 12)}...`);
+
+      // Verify (simulated server)
+      const pubkeyBytes = keypair.publicKey;
+      const isValid = nacl.sign.detached.verify(messageBytes, signatureBytes, pubkeyBytes);
+
+      if (!isValid) {
+        setStatus('verify-status', 'error', '✗ Invalid signature');
+        log('✗ Verification failed');
+        return;
+      }
+
+      // Check nonce
+      const nonceData = serverNonces.get(challenge.nonce);
+      if (!nonceData || nonceData.expires < new Date()) {
+        setStatus('verify-status', 'error', '✗ Invalid or expired nonce');
+        return;
+      }
+
+      // Delete nonce (one-time use)
+      serverNonces.delete(challenge.nonce);
+
+      // Create session
+      sessionToken = 'siwa_' + generateNonce(32);
+      const sessionExpires = new Date(Date.now() + 60 * 60 * 1000);
+      serverSessions.set(sessionToken, {
+        address: challenge.pubkey,
+        expires: sessionExpires
+      });
+
+      document.getElementById('session-token').value = sessionToken;
+      document.getElementById('session-expires').value = sessionExpires.toISOString();
+      document.getElementById('test-btn').disabled = false;
+      
+      setStatus('verify-status', 'success', '✓ Signature verified');
+      setStatus('session-status', 'success', '✓ Authenticated! Session created.');
+      log(`← Session: ${sessionToken.slice(0, 16)}...`);
+      log('✓ SIWA authentication complete!');
+    }
+
+    // Step 4: Test protected endpoint
+    function testProtectedEndpoint() {
+      if (!sessionToken) return;
+
+      const session = serverSessions.get(sessionToken);
+      if (!session || session.expires < new Date()) {
+        setStatus('session-status', 'error', '✗ Session expired');
+        return;
+      }
+
+      log(`→ GET /api/me (Bearer ${sessionToken.slice(0, 12)}...)`);
+      log(`← { "message": "Hello, agent!", "address": "${session.address.slice(0, 8)}..." }`);
+      setStatus('session-status', 'success', '✓ Protected endpoint accessed successfully!');
+    }
+
+    // Utility
+    function generateNonce(length) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      const array = new Uint8Array(length);
+      crypto.getRandomValues(array);
+      return Array.from(array, b => chars[b % chars.length]).join('');
+    }
+
+    log('SIWA Demo initialized. Click "Generate New Keypair" to start.');
+  </script>
+</body>
+</html>
