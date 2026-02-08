@@ -27,7 +27,7 @@ module.exports = function handler(req, res) {
   nonceStore.set(nonce, { address, expiresAt });
 
   // Create SIWA message
-  const domain = 'siwa-landing-black.vercel.app';
+  const domain = req.headers.host || 'getsiwa.com';
   const uri = `https://${domain}`;
   const issuedAt = new Date().toISOString();
   const expirationTime = new Date(expiresAt).toISOString();
