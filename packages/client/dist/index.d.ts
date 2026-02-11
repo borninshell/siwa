@@ -24,6 +24,7 @@ export interface SignInOptions {
 export interface ChallengeResponse {
     challengeId: string;
     message: string;
+    messageHash: string;
     expiresAt: string;
 }
 export interface VerifyResponse {

@@ -3,7 +3,8 @@
  */
 import { SIWAMessage } from './types.js';
 /**
- * Generate a cryptographically secure nonce
+ * Generate a cryptographically secure nonce using rejection sampling
+ * to avoid modulo bias.
  */
 export declare function generateNonce(length?: number): string;
 /**

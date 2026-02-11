@@ -6,39 +6,72 @@
 import { createMessage, serializeMessage, verify, generateNonce, isValidSolanaAddress, } from '@siwa/core';
 import { createHash, randomBytes } from 'crypto';
 /**
- * Simple in-memory nonce store
+ * Simple in-memory nonce store with expiration checks
  */
 class InMemoryNonceStore {
     store = new Map();
     async set(nonce, data) {
+        const delay = data.expiresAt.getTime() - Date.now();
+        // Don't store already-expired nonces
+        if (delay <= 0) {
+            return;
+        }
         this.store.set(nonce, data);
         // Auto-cleanup expired nonces
-        setTimeout(() => this.store.delete(nonce), data.expiresAt.getTime() - Date.now());
+        setTimeout(() => this.store.delete(nonce), delay);
     }
     async get(nonce) {
-        return this.store.get(nonce) ?? null;
+        const data = this.store.get(nonce);
+        if (!data)
+            return null;
+        // Check expiration
+        if (data.expiresAt < new Date()) {
+            this.store.delete(nonce);
+            return null;
+        }
+        return data;
     }
     async delete(nonce) {
         this.store.delete(nonce);
     }
+    /** Atomically delete and return nonce data (prevents TOCTOU race) */
+    async deleteAndGet(nonce) {
+        const data = this.store.get(nonce);
+        if (!data)
+            return null;
+        // Delete first (atomic in single-threaded JS)
+        this.store.delete(nonce);
+        // Then check expiration
+        if (data.expiresAt < new Date()) {
+            return null;
+        }
+        return data;
+    }
 }
 /**
- * Simple in-memory session store
+ * Simple in-memory session store with expiration checks
  */
 class InMemorySessionStore {
     store = new Map();
     async set(token, session) {
+        const delay = session.expiresAt.getTime() - Date.now();
+        // Don't store already-expired sessions
+        if (delay <= 0) {
+            return;
+        }
         this.store.set(token, session);
         // Auto-cleanup expired sessions
-        setTimeout(() => this.store.delete(token), session.expiresAt.getTime() - Date.now());
+        setTimeout(() => this.store.delete(token), delay);
     }
     async get(token) {
         const session = this.store.get(token);
-        if (session && session.expiresAt < new Date()) {
+        if (!session)
+            return null;
+        if (session.expiresAt < new Date()) {
             this.store.delete(token);
             return null;
         }
-        return session ?? null;
+        return session;
     }
     async delete(token) {
         this.store.delete(token);
@@ -138,8 +171,18 @@ export class SIWAServer {
             throw new Error(result.error ?? 'Verification failed');
         }
         const siwaMessage = result.message;
-        // Check nonce hasn't been used (replay protection)
-        const nonceData = await this.nonceStore.get(siwaMessage.nonce);
+        // ATOMIC nonce consumption to prevent TOCTOU race condition
+        // Use deleteAndGet if available, otherwise fall back to get+delete
+        let nonceData;
+        if (this.nonceStore.deleteAndGet) {
+            nonceData = await this.nonceStore.deleteAndGet(siwaMessage.nonce);
+        }
+        else {
+            nonceData = await this.nonceStore.get(siwaMessage.nonce);
+            if (nonceData) {
+                await this.nonceStore.delete(siwaMessage.nonce);
+            }
+        }
         if (!nonceData) {
             throw new Error('Invalid or expired nonce');
         }
@@ -147,8 +190,6 @@ export class SIWAServer {
         if (nonceData.pubkey !== pubkey) {
             throw new Error('Public key mismatch');
         }
-        // Delete nonce (one-time use)
-        await this.nonceStore.delete(siwaMessage.nonce);
         // Create session
         const token = generateSessionToken();
         const expiresAt = new Date(Date.now() + this.sessionExpirationMinutes * 60 * 1000);

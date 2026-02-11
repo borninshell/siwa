@@ -26,6 +26,8 @@ export interface NonceStore {
     set(nonce: string, data: NonceData): Promise<void>;
     get(nonce: string): Promise<NonceData | null>;
     delete(nonce: string): Promise<void>;
+    /** Atomically delete and return nonce data (prevents TOCTOU race) */
+    deleteAndGet?(nonce: string): Promise<NonceData | null>;
 }
 export interface NonceData {
     pubkey: string;

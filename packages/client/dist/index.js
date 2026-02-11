@@ -82,7 +82,7 @@ export class SIWAClient {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                challengeId: challenge.challengeId,
+                message: challenge.message,
                 pubkey: this.address,
                 signature,
             }),

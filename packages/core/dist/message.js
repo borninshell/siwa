@@ -3,18 +3,63 @@
  */
 const SIWA_VERSION = '1';
 /**
- * Generate a cryptographically secure nonce
+ * Generate a cryptographically secure nonce using rejection sampling
+ * to avoid modulo bias.
  */
 export function generateNonce(length = 16) {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    const array = new Uint8Array(length);
-    crypto.getRandomValues(array);
-    return Array.from(array, byte => chars[byte % chars.length]).join('');
+    const maxValid = 256 - (256 % chars.length); // 248 for 62 chars - reject >= 248
+    const result = [];
+    while (result.length < length) {
+        const array = new Uint8Array(length - result.length);
+        crypto.getRandomValues(array);
+        for (const byte of array) {
+            if (byte < maxValid && result.length < length) {
+                result.push(chars[byte % chars.length]);
+            }
+        }
+    }
+    return result.join('');
+}
+/**
+ * Validate a domain string
+ */
+function isValidDomain(domain) {
+    if (!domain || domain.length > 253)
+        return false;
+    // Allow localhost for development
+    if (domain === 'localhost')
+        return true;
+    // Basic domain validation - alphanumeric, hyphens, dots
+    return /^[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9]$/.test(domain);
+}
+/**
+ * Validate a Solana base58 address (32-44 chars, base58 alphabet)
+ */
+function isValidSolanaAddress(address) {
+    if (!address || address.length < 32 || address.length > 44)
+        return false;
+    return /^[1-9A-HJ-NP-Za-km-z]+$/.test(address);
 }
 /**
  * Create a SIWA message object with defaults
  */
 export function createMessage(params) {
+    // Validate domain
+    if (!isValidDomain(params.domain)) {
+        throw new Error('Invalid domain format');
+    }
+    // Validate URI
+    try {
+        new URL(params.uri);
+    }
+    catch {
+        throw new Error('Invalid URI format');
+    }
+    // Validate address
+    if (!isValidSolanaAddress(params.address)) {
+        throw new Error('Invalid Solana address format');
+    }
     const now = new Date();
     const expirationMinutes = params.expirationMinutes ?? 5;
     const expiresAt = new Date(now.getTime() + expirationMinutes * 60 * 1000);
