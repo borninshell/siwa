@@ -34,8 +34,8 @@ app.get('/', (req, res) => {
   });
 });
 
-// Step 1: Get challenge
-app.get('/siwa/challenge', async (req, res) => {
+// Step 1: Get challenge (with rate limiting)
+app.get('/siwa/challenge', siwa.rateLimitMiddleware(), async (req, res) => {
   try {
     const pubkey = req.query.pubkey as string;
     

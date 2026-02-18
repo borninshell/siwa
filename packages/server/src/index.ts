@@ -40,6 +40,32 @@ export interface SIWAServerOptions {
   
   /** Resources/scopes to request */
   resources?: string[];
+  
+  /** Rate limiting configuration (set to false to disable) */
+  rateLimit?: RateLimitOptions | false;
+}
+
+export interface RateLimitOptions {
+  /** Maximum requests per window (default: 10) */
+  maxRequests?: number;
+  
+  /** Window duration in minutes (default: 15) */
+  windowMinutes?: number;
+  
+  /** Custom rate limit store (default: in-memory Map) */
+  store?: RateLimitStore;
+}
+
+export interface RateLimitStore {
+  get(key: string): Promise<RateLimitData | null>;
+  set(key: string, data: RateLimitData): Promise<void>;
+  delete(key: string): Promise<void>;
+}
+
+export interface RateLimitData {
+  count: number;
+  windowStart: Date;
+  expiresAt: Date;
 }
 
 export interface NonceStore {
@@ -148,6 +174,42 @@ class InMemorySessionStore implements SessionStore {
 }
 
 /**
+ * Simple in-memory rate limit store with sliding window
+ */
+class InMemoryRateLimitStore implements RateLimitStore {
+  private store = new Map<string, RateLimitData>();
+  
+  async get(key: string): Promise<RateLimitData | null> {
+    const data = this.store.get(key);
+    if (!data) return null;
+    
+    // Check if window has expired
+    if (data.expiresAt < new Date()) {
+      this.store.delete(key);
+      return null;
+    }
+    
+    return data;
+  }
+  
+  async set(key: string, data: RateLimitData): Promise<void> {
+    const delay = data.expiresAt.getTime() - Date.now();
+    // Don't store already-expired data
+    if (delay <= 0) {
+      return;
+    }
+    
+    this.store.set(key, data);
+    // Auto-cleanup expired data
+    setTimeout(() => this.store.delete(key), delay);
+  }
+  
+  async delete(key: string): Promise<void> {
+    this.store.delete(key);
+  }
+}
+
+/**
  * Generate a secure session token
  */
 function generateSessionToken(): string {
@@ -166,6 +228,9 @@ export class SIWAServer {
   private sessionStore: SessionStore;
   private statement?: string;
   private resources?: string[];
+  private rateLimitStore?: RateLimitStore;
+  private maxRequests: number = 10;
+  private windowMinutes: number = 15;
   
   constructor(options: SIWAServerOptions) {
     this.domain = options.domain;
@@ -176,12 +241,74 @@ export class SIWAServer {
     this.sessionStore = options.sessionStore ?? new InMemorySessionStore();
     this.statement = options.statement;
     this.resources = options.resources;
+    
+    // Rate limiting setup
+    if (options.rateLimit !== false) {
+      this.rateLimitStore = options.rateLimit?.store ?? new InMemoryRateLimitStore();
+      this.maxRequests = options.rateLimit?.maxRequests ?? 10;
+      this.windowMinutes = options.rateLimit?.windowMinutes ?? 15;
+    }
+  }
+  
+  /**
+   * Check rate limit for a given identifier (IP address or pubkey)
+   */
+  async checkRateLimit(identifier: string): Promise<boolean> {
+    if (!this.rateLimitStore) {
+      return true; // Rate limiting disabled
+    }
+    
+    const now = new Date();
+    const windowStart = new Date(now.getTime() - this.windowMinutes * 60 * 1000);
+    
+    const existing = await this.rateLimitStore.get(identifier);
+    
+    if (!existing) {
+      // First request in window
+      await this.rateLimitStore.set(identifier, {
+        count: 1,
+        windowStart: now,
+        expiresAt: new Date(now.getTime() + this.windowMinutes * 60 * 1000),
+      });
+      return true;
+    }
+    
+    // Check if we're still in the same window
+    if (existing.windowStart >= windowStart) {
+      // Same window, check count
+      if (existing.count >= this.maxRequests) {
+        return false; // Rate limit exceeded
+      }
+      
+      // Increment count
+      await this.rateLimitStore.set(identifier, {
+        ...existing,
+        count: existing.count + 1,
+      });
+      return true;
+    } else {
+      // New window started
+      await this.rateLimitStore.set(identifier, {
+        count: 1,
+        windowStart: now,
+        expiresAt: new Date(now.getTime() + this.windowMinutes * 60 * 1000),
+      });
+      return true;
+    }
   }
   
   /**
    * Generate a challenge for an agent to sign
    */
-  async createChallenge(pubkey: string): Promise<SIWAChallenge> {
+  async createChallenge(pubkey: string, clientIdentifier?: string): Promise<SIWAChallenge> {
+    // Rate limiting check
+    if (this.rateLimitStore && clientIdentifier) {
+      const allowed = await this.checkRateLimit(clientIdentifier);
+      if (!allowed) {
+        throw new Error(`Rate limit exceeded: max ${this.maxRequests} requests per ${this.windowMinutes} minutes`);
+      }
+    }
+    
     // Validate pubkey
     if (!isValidSolanaAddress(pubkey)) {
       throw new Error('Invalid Solana public key');
@@ -320,6 +447,33 @@ export class SIWAServer {
    */
   async revokeSession(token: string): Promise<void> {
     await this.sessionStore.delete(token);
+  }
+  
+  /**
+   * Express-style middleware for rate limiting
+   */
+  rateLimitMiddleware() {
+    return async (req: any, res: any, next: any) => {
+      if (!this.rateLimitStore) {
+        return next(); // Rate limiting disabled
+      }
+      
+      // Use IP address as identifier
+      const identifier = req.ip || req.connection.remoteAddress || 'unknown';
+      
+      try {
+        const allowed = await this.checkRateLimit(identifier);
+        if (!allowed) {
+          return res.status(429).json({
+            error: `Rate limit exceeded: max ${this.maxRequests} requests per ${this.windowMinutes} minutes`,
+            retryAfter: this.windowMinutes * 60,
+          });
+        }
+        next();
+      } catch (error) {
+        res.status(500).json({ error: 'Rate limiting error' });
+      }
+    };
   }
   
   /**

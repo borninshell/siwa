@@ -21,6 +21,26 @@ export interface SIWAServerOptions {
     statement?: string;
     /** Resources/scopes to request */
     resources?: string[];
+    /** Rate limiting configuration (set to false to disable) */
+    rateLimit?: RateLimitOptions | false;
+}
+export interface RateLimitOptions {
+    /** Maximum requests per window (default: 10) */
+    maxRequests?: number;
+    /** Window duration in minutes (default: 15) */
+    windowMinutes?: number;
+    /** Custom rate limit store (default: in-memory Map) */
+    store?: RateLimitStore;
+}
+export interface RateLimitStore {
+    get(key: string): Promise<RateLimitData | null>;
+    set(key: string, data: RateLimitData): Promise<void>;
+    delete(key: string): Promise<void>;
+}
+export interface RateLimitData {
+    count: number;
+    windowStart: Date;
+    expiresAt: Date;
 }
 export interface NonceStore {
     set(nonce: string, data: NonceData): Promise<void>;
@@ -57,11 +77,18 @@ export declare class SIWAServer {
     private sessionStore;
     private statement?;
     private resources?;
+    private rateLimitStore?;
+    private maxRequests;
+    private windowMinutes;
     constructor(options: SIWAServerOptions);
+    /**
+     * Check rate limit for a given identifier (IP address or pubkey)
+     */
+    checkRateLimit(identifier: string): Promise<boolean>;
     /**
      * Generate a challenge for an agent to sign
      */
-    createChallenge(pubkey: string): Promise<SIWAChallenge>;
+    createChallenge(pubkey: string, clientIdentifier?: string): Promise<SIWAChallenge>;
     /**
      * Verify a signed challenge and create a session
      */
@@ -78,6 +105,10 @@ export declare class SIWAServer {
      * Revoke a session
      */
     revokeSession(token: string): Promise<void>;
+    /**
+     * Express-style middleware for rate limiting
+     */
+    rateLimitMiddleware(): (req: any, res: any, next: any) => Promise<any>;
     /**
      * Express-style middleware for protected routes
      */
