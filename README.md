@@ -145,8 +145,8 @@ npx tsx examples/demo-client/index.ts
 - [x] Core message format
 - [x] Signature verification
 - [x] Express middleware
-- [ ] Redis session store
-- [ ] Rate limiting
+- [x] Redis session store
+- [x] Rate limiting
 - [ ] DID integration
 - [ ] Verifiable Credentials
 - [ ] Multi-chain support

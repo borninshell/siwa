@@ -117,4 +117,5 @@ export declare class SIWAServer {
     }): (req: any, res: any, next: any) => Promise<any>;
 }
 export { SIWAMessage, SIWAChallenge, SIWASession, SIWAVerificationResult, } from '@siwa/core';
+export { RedisSessionStore, RedisNonceStore, RedisRateLimitStore, createRedisStores, type RedisClient, } from './redis.js';
 //# sourceMappingURL=index.d.ts.map

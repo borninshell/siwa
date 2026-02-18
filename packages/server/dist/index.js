@@ -363,4 +363,6 @@ export class SIWAServer {
         };
     }
 }
+// Re-export Redis stores (optional)
+export { RedisSessionStore, RedisNonceStore, RedisRateLimitStore, createRedisStores, } from './redis.js';
 //# sourceMappingURL=index.js.map

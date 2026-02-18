@@ -523,3 +523,12 @@ export {
   SIWASession,
   SIWAVerificationResult,
 } from '@siwa/core';
+
+// Re-export Redis stores (optional)
+export {
+  RedisSessionStore,
+  RedisNonceStore,
+  RedisRateLimitStore,
+  createRedisStores,
+  type RedisClient,
+} from './redis.js';
