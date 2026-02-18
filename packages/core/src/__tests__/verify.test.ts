@@ -1,7 +1,7 @@
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
-import { verify, verifySignatureOnly, isValidSolanaAddress } from '../verify';
-import { createMessage, serializeMessage } from '../message';
+import { verify, verifySignatureOnly, isValidSolanaAddress } from '../verify.js';
+import { createMessage, serializeMessage } from '../message.js';
 
 describe('SIWA Verification', () => {
   // Generate a test keypair

@@ -9,7 +9,7 @@
  */
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
-import { createMessage, serializeMessage, generateNonce, verify } from '../index';
+import { createMessage, serializeMessage, generateNonce, verify } from '../index.js';
 describe('SIWA End-to-End Flow', () => {
     // Simulate an agent's keypair
     const agentKeypair = nacl.sign.keyPair();

@@ -12,13 +12,17 @@
   "dependencies": {
     "@siwa/core": "workspace:*",
     "@siwa/server": "workspace:*",
-    "@solana/web3.js": "^1.98.0",
     "@solana/spl-token": "^0.4.0",
+    "@solana/web3.js": "^1.98.0",
     "tweetnacl": "^1.0.3"
   },
   "peerDependencies": {
     "express": "^4.0.0 || ^5.0.0"
   },
   "author": "The Shellborn Collective",
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.19.7"
+  }
 }

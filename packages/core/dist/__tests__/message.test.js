@@ -1,4 +1,4 @@
-import { createMessage, serializeMessage, parseMessage, generateNonce } from '../message';
+import { createMessage, serializeMessage, parseMessage, generateNonce } from '../message.js';
 describe('SIWA Message', () => {
     const testAddress = 'DRpbCBMxVnDK7maPM5tGv6MvB3v1sRMC86PZ8okm21hy';
     describe('generateNonce', () => {

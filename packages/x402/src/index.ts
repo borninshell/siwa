@@ -310,7 +310,7 @@ export async function payAndRetry(
   options: RequestInit,
   keypair: Keypair,
   connection: Connection
-): Promise<Response> {
+): Promise<globalThis.Response> {
   // First request - expect 402
   const res = await fetch(url, options);
   
